@@ -17,8 +17,11 @@ const NETWORK = "stellar:testnet";
 const DEFAULT_PORT = 3001;
 const PRICE_PER_ENDPOINT = 0.01;
 const STELLAR_EXPERT_TESTNET_BASE = "https://stellar.expert/explorer/testnet/tx";
-const COINGECKO_PRICE_URL =
+const COINGECKO_DEMO_PRICE_URL =
   "https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=usd&include_24hr_change=true&include_last_updated_at=true";
+const COINGECKO_PRO_PRICE_URL =
+  "https://pro-api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=usd&include_24hr_change=true&include_last_updated_at=true";
+const MARKET_PRICE_CACHE_TTL_MS = 30_000;
 
 type JsonObject = Record<string, unknown>;
 
@@ -28,6 +31,13 @@ type PaymentRecord = {
   txHash: string | null;
   stellarExpertUrl: string | null;
 };
+
+let cachedMarketPrice:
+  | {
+      expiresAt: number;
+      value: JsonObject;
+    }
+  | null = null;
 
 function getRequiredEnv(name: string): string {
   const value = process.env[name];
@@ -97,9 +107,32 @@ async function createPaidFetcher() {
 }
 
 async function fetchCoinGeckoPrice(): Promise<JsonObject> {
-  const response = await fetch(COINGECKO_PRICE_URL);
+  if (cachedMarketPrice && cachedMarketPrice.expiresAt > Date.now()) {
+    return cachedMarketPrice.value;
+  }
+
+  const demoApiKey = process.env.CG_API_KEY ?? process.env.COINGECKO_API_KEY;
+  const proApiKey = process.env.COINGECKO_PRO_API_KEY;
+  const response = await fetch(
+    proApiKey ? COINGECKO_PRO_PRICE_URL : COINGECKO_DEMO_PRICE_URL,
+    {
+      headers: proApiKey
+        ? {
+            "x-cg-pro-api-key": proApiKey,
+          }
+        : demoApiKey
+          ? {
+              "x-cg-demo-api-key": demoApiKey,
+            }
+          : undefined,
+    },
+  );
 
   if (!response.ok) {
+    if (cachedMarketPrice) {
+      return cachedMarketPrice.value;
+    }
+
     const body = await response.text();
     throw new Error(`CoinGecko request failed: ${response.status} ${body}`);
   }
@@ -113,7 +146,7 @@ async function fetchCoinGeckoPrice(): Promise<JsonObject> {
   };
   const price = payload.stellar;
 
-  return {
+  const result = {
     asset: "XLM",
     source: "CoinGecko",
     priceUsd: price?.usd ?? null,
@@ -123,6 +156,13 @@ async function fetchCoinGeckoPrice(): Promise<JsonObject> {
         ? new Date(price.last_updated_at * 1000).toISOString()
         : null,
   };
+
+  cachedMarketPrice = {
+    expiresAt: Date.now() + MARKET_PRICE_CACHE_TTL_MS,
+    value: result,
+  };
+
+  return result;
 }
 
 async function fetchWalletBalance(): Promise<JsonObject> {

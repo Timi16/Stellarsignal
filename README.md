@@ -64,6 +64,7 @@ Each endpoint costs `$0.01 USDC` on `stellar:testnet`.
    - `X402_FACILITATOR_API_KEY`
    - `API_STELLAR_SECRET_KEY`
    - `AGENT_STELLAR_SECRET_KEY`
+   - `CG_API_KEY`
    - `TOGETHER_API_KEY`
 
 5. Fund both wallets with Friendbot:
