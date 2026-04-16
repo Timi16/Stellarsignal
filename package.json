@@ -12,6 +12,7 @@
     "fund-wallets": "tsx scripts/fund-wallets.ts"
   },
   "devDependencies": {
+    "@stellar/stellar-sdk": "^13.3.0",
     "@types/express": "^5.0.1",
     "@types/node": "^22.13.10",
     "dotenv": "^16.4.7",
@@ -19,4 +20,3 @@
     "typescript": "^5.8.2"
   }
 }
-
