@@ -76,25 +76,36 @@ Each endpoint costs `$0.01 USDC` on `stellar:testnet`.
    Friendbot only adds testnet XLM. You still need a USDC trustline on both wallets, then testnet USDC for the agent wallet so it can pay the API.
    The Stellar docs point to Stellar Lab for trustlines and Circle Faucet for testnet USDC.
 
-6. Start the API server:
+6. Create USDC trustlines and print the wallet addresses you need for the faucet:
+
+   ```bash
+   bun run setup-usdc
+   ```
+
+   Then request testnet USDC from Circle Faucet:
+   - https://faucet.circle.com
+   - Choose `Stellar Testnet`
+   - Paste the printed wallet public keys
+
+7. Start the API server:
 
    ```bash
    bun run dev:api
    ```
 
-7. Start the agent in a second terminal:
+8. Start the agent in a second terminal:
 
    ```bash
    bun run dev:agent
    ```
 
-8. Start the frontend in a third terminal:
+9. Start the frontend in a third terminal:
 
    ```bash
    bun run dev:frontend
    ```
 
-9. Optional build checks:
+10. Optional build checks:
 
    ```bash
    bun run build

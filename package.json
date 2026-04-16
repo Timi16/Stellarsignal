@@ -9,7 +9,8 @@
     "dev:frontend": "cd Frontend && bun run dev",
     "build": "tsc -p services/api-server/tsconfig.json && tsc -p services/agent/tsconfig.json",
     "build:frontend": "cd Frontend && bun run build",
-    "fund-wallets": "tsx scripts/fund-wallets.ts"
+    "fund-wallets": "tsx scripts/fund-wallets.ts",
+    "setup-usdc": "tsx scripts/setup-usdc-trustlines.ts"
   },
   "dependencies": {
     "@stellar/stellar-sdk": "^13.3.0",
