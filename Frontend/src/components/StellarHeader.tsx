@@ -3,9 +3,23 @@ import { Zap } from "lucide-react";
 interface StellarHeaderProps {
   usdcBalance: number | null;
   xlmBalance: number | null;
+  xlmPrice: string | null;
 }
 
-export function StellarHeader({ usdcBalance, xlmBalance }: StellarHeaderProps) {
+export function StellarHeader({
+  usdcBalance,
+  xlmBalance,
+  xlmPrice,
+}: StellarHeaderProps) {
+  const parsedXlmPrice =
+    typeof xlmPrice === "string" ? Number.parseFloat(xlmPrice) : Number.NaN;
+  const xlmValue =
+    xlmBalance !== null && Number.isFinite(parsedXlmPrice)
+      ? xlmBalance * parsedXlmPrice
+      : null;
+  const totalEstimatedValue =
+    (usdcBalance ?? 0) + (xlmValue ?? 0);
+
   return (
     <header className="flex items-center justify-between px-6 py-4 border-b border-border">
       <div className="flex items-center gap-3">
@@ -28,6 +42,20 @@ export function StellarHeader({ usdcBalance, xlmBalance }: StellarHeaderProps) {
           XLM:{" "}
           <span className="text-primary font-semibold">
             {xlmBalance !== null ? xlmBalance.toFixed(2) : "—"}
+          </span>
+        </span>
+        <span className="text-muted-foreground">|</span>
+        <span>
+          XLM Value:{" "}
+          <span className="text-primary font-semibold">
+            {xlmValue !== null ? `$${xlmValue.toFixed(2)}` : "—"}
+          </span>
+        </span>
+        <span className="text-muted-foreground">|</span>
+        <span>
+          Est. Total:{" "}
+          <span className="text-primary font-semibold">
+            {`$${totalEstimatedValue.toFixed(2)}`}
           </span>
         </span>
       </div>

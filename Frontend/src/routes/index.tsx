@@ -42,6 +42,7 @@ function Dashboard() {
       <StellarHeader
         usdcBalance={walletBalance}
         xlmBalance={xlmWalletBalance}
+        xlmPrice={xlmPrice}
       />
 
       <div className="flex flex-1 min-h-0">
