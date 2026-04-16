@@ -1,16 +1,11 @@
 import dotenv from "dotenv";
 import express from "express";
+import { Horizon, Keypair } from "@stellar/stellar-sdk";
 import {
-  Horizon,
-  Keypair,
-  Transaction,
-  TransactionBuilder,
-} from "@stellar/stellar-sdk";
-import { x402Client, x402HTTPClient } from "@x402/fetch";
-import {
-  createEd25519Signer,
-  getNetworkPassphrase,
-} from "@x402/stellar";
+  decodePaymentResponseHeader,
+  wrapFetchWithPaymentFromConfig,
+} from "@x402/fetch";
+import { createEd25519Signer } from "@x402/stellar";
 import { ExactStellarScheme } from "@x402/stellar/exact/client";
 import { fileURLToPath } from "node:url";
 
@@ -44,53 +39,6 @@ function getRequiredEnv(name: string): string {
   return value;
 }
 
-function optimizeTestnetFee(paymentPayload: any): any {
-  const networkPassphrase = getNetworkPassphrase(NETWORK);
-  const tx = new Transaction(
-    paymentPayload.payload.transaction,
-    networkPassphrase,
-  );
-  const sorobanData = tx.toEnvelope().v1()?.tx()?.ext()?.sorobanData();
-
-  if (!sorobanData) {
-    return paymentPayload;
-  }
-
-  return {
-    ...paymentPayload,
-    payload: {
-      ...paymentPayload.payload,
-      transaction: TransactionBuilder.cloneFrom(tx, {
-        fee: "1",
-        sorobanData,
-        networkPassphrase,
-      })
-        .build()
-        .toXDR(),
-    },
-  };
-}
-
-function extractTransactionHash(paymentResponse: any): string | null {
-  const candidates = [
-    paymentResponse?.txHash,
-    paymentResponse?.transactionHash,
-    paymentResponse?.settleTxHash,
-    paymentResponse?.settlement?.txHash,
-    paymentResponse?.settlement?.transactionHash,
-    paymentResponse?.transaction?.hash,
-    paymentResponse?.receipt?.txHash,
-  ];
-
-  for (const candidate of candidates) {
-    if (typeof candidate === "string" && candidate.length > 0) {
-      return candidate;
-    }
-  }
-
-  return null;
-}
-
 function buildExplorerUrl(txHash: string | null): string | null {
   if (!txHash) {
     return null;
@@ -103,40 +51,20 @@ async function createPaidFetcher() {
   const rpcUrl = getRequiredEnv("STELLAR_RPC_URL");
   const secretKey = getRequiredEnv("AGENT_STELLAR_SECRET_KEY");
   const signer = createEd25519Signer(secretKey, NETWORK);
-  const client = new x402Client().register(
-    "stellar:*",
-    new ExactStellarScheme(signer, { url: rpcUrl }),
-  );
-  const httpClient = new x402HTTPClient(client);
+  const fetchWithPayment = wrapFetchWithPaymentFromConfig(fetch, {
+    schemes: [
+      {
+        network: "stellar:*",
+        client: new ExactStellarScheme(signer, { url: rpcUrl }),
+      },
+    ],
+  });
 
   return async function paidFetchJson(
     url: string,
   ): Promise<{ body: JsonObject; payment: PaymentRecord }> {
-    const firstTry = await fetch(url);
-
-    if (firstTry.status !== 402) {
-      const body = (await firstTry.json()) as JsonObject;
-
-      return {
-        body,
-        payment: {
-          endpoint: new URL(url).pathname,
-          amount: "$0.00 USDC",
-          txHash: null,
-          stellarExpertUrl: null,
-        },
-      };
-    }
-
-    const paymentRequired = httpClient.getPaymentRequiredResponse((name) =>
-      firstTry.headers.get(name),
-    );
-    let paymentPayload = await client.createPaymentPayload(paymentRequired);
-    paymentPayload = optimizeTestnetFee(paymentPayload);
-
-    const paidResponse = await fetch(url, {
+    const paidResponse = await fetchWithPayment(url, {
       method: "GET",
-      headers: httpClient.encodePaymentSignatureHeader(paymentPayload),
     });
 
     if (!paidResponse.ok) {
@@ -147,10 +75,14 @@ async function createPaidFetcher() {
     }
 
     const body = (await paidResponse.json()) as JsonObject;
-    const paymentResponse = httpClient.getPaymentSettleResponse((name) =>
-      paidResponse.headers.get(name),
-    );
-    const txHash = extractTransactionHash(paymentResponse);
+    const paymentHeader = paidResponse.headers.get("payment-response");
+    const paymentResponse = paymentHeader
+      ? decodePaymentResponseHeader(paymentHeader)
+      : null;
+    const txHash =
+      paymentResponse && typeof paymentResponse.transaction === "string"
+        ? paymentResponse.transaction
+        : null;
 
     return {
       body,

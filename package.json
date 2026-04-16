@@ -2,20 +2,24 @@
   "name": "stellarsignal",
   "private": true,
   "type": "module",
-  "workspaces": [
-    "services/*"
-  ],
   "scripts": {
-    "dev:api": "npm run dev --workspace @stellarsignal/api-server",
-    "dev:agent": "npm run dev --workspace @stellarsignal/agent",
-    "build": "npm run build --workspaces",
+    "dev:api": "tsx services/api-server/src/index.ts",
+    "dev:agent": "tsx services/agent/src/index.ts",
+    "build": "tsc -p services/api-server/tsconfig.json && tsc -p services/agent/tsconfig.json",
     "fund-wallets": "tsx scripts/fund-wallets.ts"
   },
-  "devDependencies": {
+  "dependencies": {
     "@stellar/stellar-sdk": "^13.3.0",
+    "@x402/core": "latest",
+    "@x402/express": "latest",
+    "@x402/fetch": "latest",
+    "@x402/stellar": "latest",
+    "dotenv": "^16.4.7",
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
     "@types/express": "^5.0.1",
     "@types/node": "^22.13.10",
-    "dotenv": "^16.4.7",
     "tsx": "^4.19.3",
     "typescript": "^5.8.2"
   }

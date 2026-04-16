@@ -10,7 +10,7 @@ dotenv.config({
   path: fileURLToPath(new URL("../../../.env", import.meta.url)),
 });
 
-const NETWORK = "stellar:testnet";
+const NETWORK = "stellar:testnet" as const;
 const PRICE = "$0.01";
 const DEFAULT_PORT = 4021;
 
@@ -50,10 +50,10 @@ const port = Number(process.env.API_PORT ?? DEFAULT_PORT);
 
 const app = express();
 
-const routeConfig = {
+const routeConfig: Parameters<typeof paymentMiddlewareFromConfig>[0] = {
   "GET /analyze/price": {
     accepts: {
-      scheme: "exact",
+      scheme: "exact" as const,
       price: PRICE,
       network: NETWORK,
       payTo: walletPublicKey,
@@ -63,7 +63,7 @@ const routeConfig = {
   },
   "GET /analyze/sentiment": {
     accepts: {
-      scheme: "exact",
+      scheme: "exact" as const,
       price: PRICE,
       network: NETWORK,
       payTo: walletPublicKey,
@@ -73,7 +73,7 @@ const routeConfig = {
   },
   "GET /analyze/signal": {
     accepts: {
-      scheme: "exact",
+      scheme: "exact" as const,
       price: PRICE,
       network: NETWORK,
       payTo: walletPublicKey,
