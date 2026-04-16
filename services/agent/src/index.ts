@@ -17,6 +17,11 @@ const NETWORK = "stellar:testnet";
 const DEFAULT_PORT = 3001;
 const PRICE_PER_ENDPOINT = 0.01;
 const STELLAR_EXPERT_TESTNET_BASE = "https://stellar.expert/explorer/testnet/tx";
+const DEFAULT_TESTNET_RPC_URLS = [
+  "https://soroban-rpc.testnet.stellar.gateway.fm",
+  "https://stellar-soroban-testnet-public.nodies.app",
+  "https://soroban-testnet.stellar.org",
+] as const;
 const COINGECKO_DEMO_PRICE_URL =
   "https://api.coingecko.com/api/v3/simple/price?ids=stellar&vs_currencies=usd&include_24hr_change=true&include_last_updated_at=true";
 const COINGECKO_PRO_PRICE_URL =
@@ -57,52 +62,77 @@ function buildExplorerUrl(txHash: string | null): string | null {
   return `${STELLAR_EXPERT_TESTNET_BASE}/${txHash}`;
 }
 
+function getRpcUrls(): string[] {
+  const configured = (process.env.STELLAR_RPC_URL ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
+
+  return [...new Set([...configured, ...DEFAULT_TESTNET_RPC_URLS])];
+}
+
 async function createPaidFetcher() {
-  const rpcUrl = getRequiredEnv("STELLAR_RPC_URL");
   const secretKey = getRequiredEnv("AGENT_STELLAR_SECRET_KEY");
   const signer = createEd25519Signer(secretKey, NETWORK);
-  const fetchWithPayment = wrapFetchWithPaymentFromConfig(fetch, {
-    schemes: [
-      {
-        network: "stellar:*",
-        client: new ExactStellarScheme(signer, { url: rpcUrl }),
-      },
-    ],
-  });
+  const paymentClients = getRpcUrls().map((rpcUrl) => ({
+    rpcUrl,
+    fetchWithPayment: wrapFetchWithPaymentFromConfig(fetch, {
+      schemes: [
+        {
+          network: "stellar:*",
+          client: new ExactStellarScheme(signer, { url: rpcUrl }),
+        },
+      ],
+    }),
+  }));
 
   return async function paidFetchJson(
     url: string,
   ): Promise<{ body: JsonObject; payment: PaymentRecord }> {
-    const paidResponse = await fetchWithPayment(url, {
-      method: "GET",
-    });
+    let lastError: unknown = null;
 
-    if (!paidResponse.ok) {
-      const body = await paidResponse.text();
-      throw new Error(
-        `Paid request failed for ${url}: ${paidResponse.status} ${body}`,
-      );
+    for (const paymentClient of paymentClients) {
+      try {
+        const paidResponse = await paymentClient.fetchWithPayment(url, {
+          method: "GET",
+        });
+
+        if (!paidResponse.ok) {
+          const body = await paidResponse.text();
+          throw new Error(
+            `Paid request failed for ${url} via ${paymentClient.rpcUrl}: ${paidResponse.status} ${body}`,
+          );
+        }
+
+        const body = (await paidResponse.json()) as JsonObject;
+        const paymentHeader = paidResponse.headers.get("payment-response");
+        const paymentResponse = paymentHeader
+          ? decodePaymentResponseHeader(paymentHeader)
+          : null;
+        const txHash =
+          paymentResponse && typeof paymentResponse.transaction === "string"
+            ? paymentResponse.transaction
+            : null;
+
+        return {
+          body,
+          payment: {
+            endpoint: new URL(url).pathname,
+            amount: "$0.01 USDC",
+            txHash,
+            stellarExpertUrl: buildExplorerUrl(txHash),
+          },
+        };
+      } catch (error) {
+        lastError = error;
+      }
     }
 
-    const body = (await paidResponse.json()) as JsonObject;
-    const paymentHeader = paidResponse.headers.get("payment-response");
-    const paymentResponse = paymentHeader
-      ? decodePaymentResponseHeader(paymentHeader)
-      : null;
-    const txHash =
-      paymentResponse && typeof paymentResponse.transaction === "string"
-        ? paymentResponse.transaction
-        : null;
+    if (lastError instanceof Error) {
+      throw lastError;
+    }
 
-    return {
-      body,
-      payment: {
-        endpoint: new URL(url).pathname,
-        amount: "$0.01 USDC",
-        txHash,
-        stellarExpertUrl: buildExplorerUrl(txHash),
-      },
-    };
+    throw new Error(`Paid request failed for ${url}`);
   };
 }
 
@@ -205,7 +235,7 @@ async function createBriefing(input: {
 }): Promise<string> {
   const togetherApiKey = getRequiredEnv("TOGETHER_API_KEY");
   const model =
-    process.env.TOGETHER_MODEL ?? "meta-llama/Llama-3-70b-instruct";
+    process.env.TOGETHER_MODEL ?? "meta-llama/Llama-3.3-70B-Instruct-Turbo";
 
   const response = await fetch("https://api.together.xyz/v1/chat/completions", {
     method: "POST",
