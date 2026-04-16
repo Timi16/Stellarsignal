@@ -138,5 +138,5 @@ curl -X POST http://localhost:3001/run-agent \
 - The API server loads the OpenZeppelin facilitator URL and API key from `.env`.
 - The agent uses the same Stellar testnet network and auto-pays the API via `x402`.
 - The agent uses `wrapFetchWithPaymentFromConfig` from `@x402/fetch` for auto-payment and reads the `PAYMENT-RESPONSE` header to report settlement details.
-- The Together model defaults to `meta-llama/Llama-3.3-70B-Instruct-Turbo`, but you can swap `TOGETHER_MODEL` if your Together account requires a different model name.
+- The Together model defaults to `meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo` for lower latency. You can also tune `TOGETHER_MAX_TOKENS` to make responses shorter and faster.
 - `scripts/fund-wallets.ts` derives the public keys from the two secret keys and funds both accounts through Stellar Friendbot.

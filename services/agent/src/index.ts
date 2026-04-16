@@ -235,7 +235,24 @@ async function createBriefing(input: {
 }): Promise<string> {
   const togetherApiKey = getRequiredEnv("TOGETHER_API_KEY");
   const model =
-    process.env.TOGETHER_MODEL ?? "meta-llama/Llama-3.3-70B-Instruct-Turbo";
+    process.env.TOGETHER_MODEL ?? "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo";
+  const maxTokens = Number(process.env.TOGETHER_MAX_TOKENS ?? "220");
+  const compactPrompt = [
+    `User question: ${input.query}`,
+    `XLM price USD: ${String(input.marketPrice.priceUsd ?? "unknown")}`,
+    `24h change pct: ${String(input.marketPrice.change24hPct ?? "unknown")}`,
+    `Price analysis: ${String(input.priceAnalysis.analysis ?? "unknown")}`,
+    `Trend: ${String(input.priceAnalysis.trend ?? "unknown")}`,
+    `Support: ${String(input.priceAnalysis.support ?? "unknown")}`,
+    `Resistance: ${String(input.priceAnalysis.resistance ?? "unknown")}`,
+    `Sentiment: ${String(input.sentimentAnalysis.sentiment ?? "unknown")}`,
+    `Sentiment score: ${String(input.sentimentAnalysis.score ?? "unknown")}`,
+    `Signal: ${String(input.signalAnalysis.signal ?? "unknown")}`,
+    `Timeframe: ${String(input.signalAnalysis.timeframe ?? "unknown")}`,
+    `Entry zone: ${JSON.stringify(input.signalAnalysis.entryZone ?? [])}`,
+    `Invalidation: ${String(input.signalAnalysis.invalidation ?? "unknown")}`,
+    `Take profit: ${JSON.stringify(input.signalAnalysis.takeProfit ?? [])}`,
+  ].join("\n");
 
   const response = await fetch("https://api.together.xyz/v1/chat/completions", {
     method: "POST",
@@ -245,16 +262,17 @@ async function createBriefing(input: {
     },
     body: JSON.stringify({
       model,
-      temperature: 0.3,
+      temperature: 0.2,
+      max_tokens: Number.isFinite(maxTokens) ? maxTokens : 220,
       messages: [
         {
           role: "system",
           content:
-            "You are a crypto market analyst. Produce a concise trading briefing with risk caveats, not financial advice.",
+            "You are a fast crypto market analyst. Answer the user's question directly first, then give a very concise trading view. Use short markdown sections: **Answer**, **Setup**, **Risk**. Keep it under 180 words. Do not add fluff or long disclaimers. Mention this is not financial advice in one short sentence only.",
         },
         {
           role: "user",
-          content: JSON.stringify(input, null, 2),
+          content: compactPrompt,
         },
       ],
     }),
@@ -339,17 +357,13 @@ app.post("/run-agent", async (req, res) => {
 
     const apiBaseUrl = getRequiredEnv("API_BASE_URL");
     const paidFetchJson = await createPaidFetcher();
-    const marketPrice = await fetchCoinGeckoPrice();
-
-    const priceResult = await paidFetchJson(
-      new URL("/analyze/price", apiBaseUrl).toString(),
-    );
-    const sentimentResult = await paidFetchJson(
-      new URL("/analyze/sentiment", apiBaseUrl).toString(),
-    );
-    const signalResult = await paidFetchJson(
-      new URL("/analyze/signal", apiBaseUrl).toString(),
-    );
+    const [marketPrice, priceResult, sentimentResult, signalResult] =
+      await Promise.all([
+        fetchCoinGeckoPrice(),
+        paidFetchJson(new URL("/analyze/price", apiBaseUrl).toString()),
+        paidFetchJson(new URL("/analyze/sentiment", apiBaseUrl).toString()),
+        paidFetchJson(new URL("/analyze/signal", apiBaseUrl).toString()),
+      ]);
 
     const briefing = await createBriefing({
       query,
