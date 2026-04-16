@@ -234,6 +234,28 @@ app.get("/", (_req, res) => {
   });
 });
 
+app.get("/status", async (_req, res) => {
+  try {
+    const walletBalance = await fetchWalletBalance();
+    const marketPrice = await fetchCoinGeckoPrice();
+
+    return res.json({
+      service: "stellarsignal-agent",
+      network: NETWORK,
+      walletBalance,
+      sourceData: {
+        marketPrice,
+      },
+    });
+  } catch (error) {
+    console.error(error);
+
+    return res.status(500).json({
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
+  }
+});
+
 app.post("/run-agent", async (req, res) => {
   try {
     const query =

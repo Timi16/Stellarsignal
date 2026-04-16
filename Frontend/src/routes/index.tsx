@@ -22,6 +22,7 @@ function Dashboard() {
   const {
     isRunning,
     walletBalance,
+    xlmWalletBalance,
     xlmPrice,
     payments,
     briefingText,
@@ -38,7 +39,10 @@ function Dashboard() {
 
   return (
     <div className="flex flex-col h-screen bg-background text-foreground">
-      <StellarHeader walletBalance={walletBalance} />
+      <StellarHeader
+        usdcBalance={walletBalance}
+        xlmBalance={xlmWalletBalance}
+      />
 
       <div className="flex flex-1 min-h-0">
         {/* Left Panel */}
