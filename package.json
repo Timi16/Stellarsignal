@@ -1,0 +1,22 @@
+{
+  "name": "stellarsignal",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "services/*"
+  ],
+  "scripts": {
+    "dev:api": "npm run dev --workspace @stellarsignal/api-server",
+    "dev:agent": "npm run dev --workspace @stellarsignal/agent",
+    "build": "npm run build --workspaces",
+    "fund-wallets": "tsx scripts/fund-wallets.ts"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.1",
+    "@types/node": "^22.13.10",
+    "dotenv": "^16.4.7",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2"
+  }
+}
+
