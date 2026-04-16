@@ -24,7 +24,8 @@ export function useAgentStream() {
     txCount: 0,
   });
   const idCounter = useRef(0);
-  const agentBaseUrl = import.meta.env.VITE_AGENT_API_URL || "/api";
+  const agentBaseUrl =
+    import.meta.env.VITE_AGENT_API_URL || "http://localhost:3001";
 
   const hydrateFromBackendResult = useCallback(
     (
