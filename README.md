@@ -44,8 +44,10 @@ Each endpoint costs `$0.01 USDC` on `stellar:testnet`.
 1. Install dependencies:
 
    ```bash
-   npm install
+   bun install
    ```
+
+   `npm install` also works if you prefer npm workspaces.
 
 2. Copy the environment template:
 
