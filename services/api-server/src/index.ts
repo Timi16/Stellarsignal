@@ -4,8 +4,11 @@ import { Keypair } from "@stellar/stellar-sdk";
 import { paymentMiddlewareFromConfig } from "@x402/express";
 import { HTTPFacilitatorClient } from "@x402/core/server";
 import { ExactStellarScheme } from "@x402/stellar/exact/server";
+import { fileURLToPath } from "node:url";
 
-dotenv.config();
+dotenv.config({
+  path: fileURLToPath(new URL("../../../.env", import.meta.url)),
+});
 
 const NETWORK = "stellar:testnet";
 const PRICE = "$0.01";
@@ -25,7 +28,7 @@ function createFacilitatorClient(): HTTPFacilitatorClient {
   const facilitatorUrl = getRequiredEnv("X402_FACILITATOR_URL");
   const apiKey = getRequiredEnv("X402_FACILITATOR_API_KEY");
 
-  return new HTTPFacilitatorClient({
+  const options = {
     url: facilitatorUrl,
     createAuthHeaders: async () => {
       const headers = { Authorization: `Bearer ${apiKey}` };
@@ -36,7 +39,9 @@ function createFacilitatorClient(): HTTPFacilitatorClient {
         supported: headers,
       };
     },
-  });
+  } as ConstructorParameters<typeof HTTPFacilitatorClient>[0];
+
+  return new HTTPFacilitatorClient(options);
 }
 
 const walletSecret = getRequiredEnv("API_STELLAR_SECRET_KEY");
