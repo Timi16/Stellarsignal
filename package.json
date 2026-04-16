@@ -3,9 +3,12 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "install:frontend": "cd Frontend && bun install",
     "dev:api": "tsx services/api-server/src/index.ts",
     "dev:agent": "tsx services/agent/src/index.ts",
+    "dev:frontend": "cd Frontend && bun run dev",
     "build": "tsc -p services/api-server/tsconfig.json && tsc -p services/agent/tsconfig.json",
+    "build:frontend": "cd Frontend && bun run build",
     "fund-wallets": "tsx scripts/fund-wallets.ts"
   },
   "dependencies": {

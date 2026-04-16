@@ -212,6 +212,17 @@ async function createBriefing(input: {
 const app = express();
 const port = Number(process.env.AGENT_PORT ?? DEFAULT_PORT);
 
+app.use((_req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Headers", "Content-Type");
+  res.header("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+
+  if (_req.method === "OPTIONS") {
+    return res.status(204).end();
+  }
+
+  next();
+});
 app.use(express.json());
 
 app.get("/", (_req, res) => {

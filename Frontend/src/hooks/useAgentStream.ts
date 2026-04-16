@@ -34,47 +34,63 @@ export function useAgentStream() {
     }));
 
     try {
-      const res = await fetch("http://localhost:3001/run-agent", {
+      const agentBaseUrl = import.meta.env.VITE_AGENT_API_URL || "/api";
+      const res = await fetch(`${agentBaseUrl}/run-agent`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ query }),
       });
 
-      if (!res.ok || !res.body) {
+      if (!res.ok) {
         throw new Error("Failed to connect to agent backend");
       }
+      const result = (await res.json()) as {
+        briefing?: string;
+        payments?: Array<{
+          endpoint?: string;
+          amount?: string;
+          txHash?: string | null;
+          stellarExpertUrl?: string | null;
+        }>;
+        totalSpent?: string;
+        walletBalance?: {
+          balances?: Array<{
+            asset?: string;
+            balance?: string;
+          }>;
+        };
+        sourceData?: {
+          marketPrice?: {
+            priceUsd?: number | null;
+          };
+        };
+      };
 
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
+      const usdcBalance = result.walletBalance?.balances?.find(
+        (balance) => balance.asset === "USDC",
+      );
+      const xlmPriceValue = result.sourceData?.marketPrice?.priceUsd;
+      const totalSpentValue = result.totalSpent
+        ? Number.parseFloat(result.totalSpent.replace(/[^0-9.]/g, ""))
+        : 0;
+      const payments: PaymentEntry[] = (result.payments ?? []).map((payment) => ({
+        id: String(++idCounter.current),
+        endpoint: payment.endpoint ?? "unknown",
+        amount: payment.amount ?? "$0.01 USDC",
+        txHash: payment.txHash ?? undefined,
+        stellarExpertUrl: payment.stellarExpertUrl ?? undefined,
+      }));
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
-
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          try {
-            const event = JSON.parse(line);
-            handleEvent(event);
-          } catch {
-            // skip non-JSON lines
-          }
-        }
-      }
-
-      // Process remaining buffer
-      if (buffer.trim()) {
-        try {
-          handleEvent(JSON.parse(buffer));
-        } catch {
-          // skip
-        }
-      }
+      setState((s) => ({
+        ...s,
+        walletBalance: usdcBalance?.balance ? Number(usdcBalance.balance) : s.walletBalance,
+        xlmPrice:
+          typeof xlmPriceValue === "number" ? xlmPriceValue.toFixed(4) : s.xlmPrice,
+        payments,
+        briefingText: result.briefing ?? "",
+        totalSpent: Number.isFinite(totalSpentValue) ? totalSpentValue : 0,
+        txCount: payments.length,
+      }));
     } catch (err) {
       setState((s) => ({
         ...s,
@@ -82,45 +98,6 @@ export function useAgentStream() {
       }));
     } finally {
       setState((s) => ({ ...s, isRunning: false }));
-    }
-
-    function handleEvent(event: Record<string, unknown>) {
-      const type = event.type as string;
-
-      if (type === "balance") {
-        setState((s) => ({
-          ...s,
-          walletBalance: Number(event.balance),
-        }));
-      } else if (type === "price") {
-        setState((s) => ({
-          ...s,
-          xlmPrice: String(event.price),
-        }));
-      } else if (type === "payment") {
-        const id = String(++idCounter.current);
-        const amount = String(event.amount || "0.01");
-        const destination = String(event.destination || "");
-        const txHash = event.txHash ? String(event.txHash) : undefined;
-        const amountNum = parseFloat(amount);
-
-        setState((s) => ({
-          ...s,
-          payments: [...s.payments, { id, amount, destination, txHash }],
-          totalSpent: s.totalSpent + (isNaN(amountNum) ? 0 : amountNum),
-          txCount: s.txCount + 1,
-        }));
-      } else if (type === "briefing" || type === "text") {
-        setState((s) => ({
-          ...s,
-          briefingText: s.briefingText + String(event.content || event.text || ""),
-        }));
-      } else if (type === "result") {
-        setState((s) => ({
-          ...s,
-          briefingText: String(event.content || event.text || s.briefingText),
-        }));
-      }
     }
   }, []);
 

@@ -4,8 +4,9 @@ import { ExternalLink, CheckCircle2 } from "lucide-react";
 export interface PaymentEntry {
   id: string;
   amount: string;
-  destination: string;
+  endpoint: string;
   txHash?: string;
+  stellarExpertUrl?: string;
 }
 
 interface PaymentLogProps {
@@ -36,11 +37,11 @@ export function PaymentLog({ payments }: PaymentLogProps) {
               <CheckCircle2 className="w-4 h-4 text-success mt-0.5 shrink-0" />
               <div className="flex-1 min-w-0">
                 <div className="text-sm text-foreground font-mono">
-                  Paid <span className="text-primary font-semibold">{p.amount} USDC</span> → {p.destination}
+                  Paid <span className="text-primary font-semibold">{p.amount}</span> → {p.endpoint}
                 </div>
                 {p.txHash && (
                   <a
-                    href={`https://stellar.expert/explorer/public/tx/${p.txHash}`}
+                    href={p.stellarExpertUrl ?? `https://stellar.expert/explorer/testnet/tx/${p.txHash}`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-xs text-muted-foreground hover:text-primary flex items-center gap-1 mt-1 transition-colors"

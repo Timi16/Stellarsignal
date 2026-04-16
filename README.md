@@ -47,22 +47,26 @@ Each endpoint costs `$0.01 USDC` on `stellar:testnet`.
    bun install
    ```
 
-   `npm install` also works if you prefer npm.
+2. Install the frontend dependencies:
 
-2. Copy the environment template:
+   ```bash
+   bun run install:frontend
+   ```
+
+3. Copy the environment template:
 
    ```bash
    cp .env.example .env
    ```
 
-3. Put your real secrets into `.env`:
+4. Put your real secrets into `.env`:
 
    - `X402_FACILITATOR_API_KEY`
    - `API_STELLAR_SECRET_KEY`
    - `AGENT_STELLAR_SECRET_KEY`
    - `TOGETHER_API_KEY`
 
-4. Fund both wallets with Friendbot:
+5. Fund both wallets with Friendbot:
 
    ```bash
    bun run fund-wallets
@@ -71,22 +75,29 @@ Each endpoint costs `$0.01 USDC` on `stellar:testnet`.
    Friendbot only adds testnet XLM. You still need a USDC trustline on both wallets, then testnet USDC for the agent wallet so it can pay the API.
    The Stellar docs point to Stellar Lab for trustlines and Circle Faucet for testnet USDC.
 
-5. Start the API server:
+6. Start the API server:
 
    ```bash
    bun run dev:api
    ```
 
-6. Start the agent in a second terminal:
+7. Start the agent in a second terminal:
 
    ```bash
    bun run dev:agent
    ```
 
-7. Optional build check:
+8. Start the frontend in a third terminal:
+
+   ```bash
+   bun run dev:frontend
+   ```
+
+9. Optional build checks:
 
    ```bash
    bun run build
+   bun run build:frontend
    ```
 
 ## Example request
